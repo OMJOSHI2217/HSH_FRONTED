@@ -12,6 +12,7 @@ export interface Student {
   interest: string;
   isAlumni: boolean;
   createdAt: string;
+  whatsappVerified?: 'verified' | 'unverified' | 'pending';
 }
 
 export interface Task {

@@ -15,6 +15,7 @@ const fromDbStudent = (db: any): Student => ({
     result: db.result,
     interest: db.interest,
     isAlumni: db.is_alumni,
+    whatsappVerified: db.whatsapp_verified,
     createdAt: db.created_at,
 });
 
@@ -23,11 +24,13 @@ const toDbStudent = (student: Partial<Student>) => {
     const db: any = { ...student };
     if (student.roomNo !== undefined) db.room_no = student.roomNo;
     if (student.isAlumni !== undefined) db.is_alumni = student.isAlumni;
+    if (student.whatsappVerified !== undefined) db.whatsapp_verified = student.whatsappVerified;
     if (student.createdAt !== undefined) db.created_at = student.createdAt;
 
     // Remove camelCase keys to avoid errors if strict
     delete db.roomNo;
     delete db.isAlumni;
+    delete db.whatsappVerified;
     delete db.createdAt;
 
     return db;

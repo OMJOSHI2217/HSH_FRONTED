@@ -1,19 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Cake, Sparkles, Send } from 'lucide-react';
+import { Cake, Sparkles } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { StudentListItem } from '@/components/StudentListItem';
 import { getStudents } from '@/lib/store';
 import { Student } from '@/types';
-import { io } from 'socket.io-client';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 
 const Birthdays = () => {
     const navigate = useNavigate();
     const [students, setStudents] = useState<Student[]>([]);
-    const [socket, setSocket] = useState<any>(null);
-    const [sendingState, setSendingState] = useState<{ [key: string]: boolean }>({});
 
     useEffect(() => {
         const fetchStudents = async () => {
@@ -21,27 +16,6 @@ const Birthdays = () => {
             setStudents(data);
         };
         fetchStudents();
-
-        const newSocket = io('http://localhost:4000');
-        setSocket(newSocket);
-
-        newSocket.on('connect', () => {
-            console.log('Connected to WhatsApp server');
-        });
-
-        newSocket.on('message_response', (response: any) => {
-            if (response.success) {
-                toast.success(`Birthday wish sent to ${response.number}!`);
-                setSendingState(prev => ({ ...prev, [response.number]: false })); // Reset loading
-            } else {
-                toast.error(`Failed to send to ${response.number}: ${response.error}`);
-                setSendingState(prev => ({ ...prev, [response.number]: false }));
-            }
-        });
-
-        return () => {
-            newSocket.disconnect();
-        };
     }, []);
 
     // Filter students whose birthday is TODAY
@@ -56,22 +30,6 @@ const Birthdays = () => {
 
         return month === currentMonth && day === currentDay;
     });
-
-    const handleSendWish = (student: Student) => {
-        if (!socket) {
-            toast.error("Not connected to WhatsApp server");
-            return;
-        }
-
-        // Remove '+' if present, ensure country code
-        let number = student.mobile.replace(/\D/g, '');
-        if (number.length === 10) number = '91' + number; // Default to India 91 if 10 digits
-
-        const message = `🎉 Happy Birthday ${student.name}! 🎂\n\nWishing you a day filled with happiness and success!\n\n- Hostel Hub Team`;
-
-        setSendingState(prev => ({ ...prev, [number]: true }));
-        socket.emit('send_message', { number, message });
-    };
 
     return (
         <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
@@ -102,30 +60,14 @@ const Birthdays = () => {
                             birthdayStudents.map((student, index) => (
                                 <div
                                     key={student.id}
-                                    className="animate-slide-in group relative"
+                                    className="animate-slide-in"
                                     style={{ animationDelay: `${index * 50}ms` }}
                                 >
                                     <StudentListItem
                                         student={student}
                                         onClick={() => navigate(`/students/${student.id}`)}
                                         whatsappMessage="Wishing you a very Happy Birthday! 🎂✨"
-                                        hideContactActions={true}
                                     />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden group-hover:block sm:block">
-                                        <Button
-                                            size="sm"
-                                            variant="secondary"
-                                            className="gap-2 shadow-sm hover:bg-green-100 hover:text-green-700 transition-all"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleSendWish(student);
-                                            }}
-                                            disabled={sendingState[student.mobile?.replace(/\D/g, '').length === 10 ? '91' + student.mobile?.replace(/\D/g, '') : student.mobile?.replace(/\D/g, '') || '']}
-                                        >
-                                            <Send className="w-4 h-4" />
-                                            {sendingState[student.mobile?.replace(/\D/g, '').length === 10 ? '91' + student.mobile?.replace(/\D/g, '') : student.mobile?.replace(/\D/g, '') || ''] ? 'Sending...' : 'Send Wish'}
-                                        </Button>
-                                    </div>
                                 </div>
                             ))
                         ) : (

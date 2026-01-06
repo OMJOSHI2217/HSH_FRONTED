@@ -13,6 +13,7 @@ import AddStudent from "./pages/AddStudent";
 import Update from "./pages/Update";
 import Categories from "./pages/Categories";
 import Tasks from "./pages/Tasks";
+import WhatsApp from "./pages/WhatsApp";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const AppRoutes = () => {
       <Route path="/update" element={<ProtectedRoute><Update /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+      <Route path="/whatsapp" element={<ProtectedRoute><WhatsApp /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
