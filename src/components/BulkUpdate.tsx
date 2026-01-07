@@ -1,0 +1,222 @@
+import React, { useCallback } from 'react';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { Upload, Download, FileSpreadsheet } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Student } from '@/types';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+interface BulkUpdateProps {
+    students: Student[];
+    onUpdate: (students: Student[]) => void;
+}
+
+export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
+    const handleDownload = async () => {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Students');
+
+        // Dynamically create columns from the first student object if available
+        if (students.length > 0) {
+            worksheet.columns = Object.keys(students[0]).map((key) => ({
+                header: key,
+                key: key,
+                width: 20, // Set a default width for better readability
+            }));
+        }
+
+        // Add rows
+        worksheet.addRows(students);
+
+        // Generate buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        // Create blob and save
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, 'hostel_students_data.xlsx');
+
+        toast.success("Excel file downloaded successfully");
+    };
+
+    const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+            toast.error("Please upload a valid Excel file (.xlsx or .xls)");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const buffer = evt.target?.result as ArrayBuffer;
+                const workbook = new ExcelJS.Workbook();
+                await workbook.xlsx.load(buffer);
+
+                const worksheet = workbook.getWorksheet(1);
+
+                if (!worksheet) {
+                    toast.error("The uploaded file is empty or invalid");
+                    return;
+                }
+
+                // Convert worksheet to JSON manually
+                const data: any[] = [];
+                const headers: string[] = [];
+
+                worksheet.eachRow((row, rowNumber) => {
+                    if (rowNumber === 1) {
+                        // Capture headers
+                        row.eachCell((cell, colNumber) => {
+                            headers[colNumber] = String(cell.value);
+                        });
+                    } else {
+                        // Capture data
+                        const rowData: any = {};
+                        let hasData = false;
+                        // Helper to safely extract cell value
+                        const getCellValue = (cell: ExcelJS.Cell): any => {
+                            const value = cell.value;
+
+                            if (value && typeof value === 'object') {
+                                // Handle formula cells
+                                if ('formula' in value) {
+                                    // If result is available, use it (check for undefined to strictly verify existence)
+                                    if ((value as any).result !== undefined) {
+                                        return (value as any).result;
+                                    }
+                                    // Fallback for simple boolean formulas (common in some Excel exports)
+                                    const formula = (value as any).formula;
+                                    if (formula === 'FALSE()') return false;
+                                    if (formula === 'TRUE()') return true;
+
+                                    // If we can't resolve the value, return null to avoid sending an object to the DB
+                                    return null;
+                                }
+                                // Handle hyperlink cells
+                                if ('text' in value) {
+                                    return (value as any).text;
+                                }
+                                // Handle rich text cells
+                                if ('richText' in value && Array.isArray((value as any).richText)) {
+                                    return (value as any).richText.map((rt: any) => rt.text).join('');
+                                }
+                            }
+
+                            return value;
+                        };
+
+                        row.eachCell((cell, colNumber) => {
+                            const header = headers[colNumber];
+                            if (header) {
+                                rowData[header] = getCellValue(cell);
+                                hasData = true;
+                            }
+                        });
+                        if (hasData) {
+                            data.push(rowData);
+                        }
+                    }
+                });
+
+                if (data.length === 0) {
+                    toast.error("The uploaded file is empty");
+                    return;
+                }
+
+                // Validate basic structure (check if 'id' exists in first row)
+                if (!('id' in data[0])) {
+                    toast.error("Invalid file format. Please use the downloaded template.");
+                    return;
+                }
+
+                onUpdate(data as Student[]);
+                toast.success(`Successfully loaded ${data.length} students records`);
+            } catch (error) {
+                console.error("Excel processing error:", error);
+                toast.error("Failed to process Excel file");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        // Reset input value to allow uploading same file again
+        e.target.value = '';
+    }, [onUpdate]);
+
+    return (
+        <div className="space-y-6 animate-fade-in">
+            <div className="space-y-6">
+                <div className="flex items-start gap-5">
+                    <div className="w-16 h-16 bg-success/10 rounded-2xl flex items-center justify-center shrink-0">
+                        <FileSpreadsheet className="w-10 h-10 text-success" />
+                    </div>
+                    <div className="space-y-1">
+                        <h3 className="font-extrabold text-2xl text-foreground tracking-tight">Excel Integration</h3>
+                        <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                            Manage your entire database efficiently using standard Excel templates. Download, edit, and re-upload with ease.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <Button
+                        variant="outline"
+                        className="h-auto py-8 flex flex-col items-center gap-4 bg-white border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-primary/5 rounded-[2rem] transition-all group"
+                        onClick={handleDownload}
+                    >
+                        <div className="p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
+                            <Download className="w-8 h-8 text-primary" />
+                        </div>
+                        <div className="text-center">
+                            <span className="font-extrabold text-lg block text-foreground">Extract Data</span>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 block">Download current database</span>
+                        </div>
+                    </Button>
+
+                    <div className="relative group">
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={handleFileUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                        />
+                        <Button
+                            variant="outline"
+                            className="w-full h-full py-8 flex flex-col items-center justify-center gap-4 bg-white border-2 border-dashed border-border/50 hover:border-success/50 hover:bg-success/5 rounded-[2rem] transition-all"
+                        >
+                            <div className="p-4 bg-success/10 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Upload className="w-8 h-8 text-success" />
+                            </div>
+                            <div className="text-center">
+                                <span className="font-extrabold text-lg block text-foreground">Import List</span>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 block">Upload edited template</span>
+                            </div>
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="bg-muted/30 border border-border/50 p-6 rounded-3xl space-y-4">
+                    <p className="font-bold text-sm flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        Optimization Guidelines
+                    </p>
+                    <ul className="space-y-3 text-sm font-medium text-muted-foreground">
+                        <li className="flex items-start gap-4">
+                            <span className="w-6 h-6 rounded-lg bg-white border border-border flex items-center justify-center text-[10px] font-bold shrink-0">01</span>
+                            <span>Do not modify the <strong className="text-foreground">ID</strong> column for existing student records.</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-lg bg-white border border-border flex items-center justify-center text-[10px] font-bold shrink-0">02</span>
+                            <span>Add new entries by providing unique identifiers in the first column.</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-lg bg-white border border-border flex items-center justify-center text-[10px] font-bold shrink-0">03</span>
+                            <span>Maintain dates in the <strong className="text-foreground">YYYY-MM-DD</strong> standard format.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    );
+};
