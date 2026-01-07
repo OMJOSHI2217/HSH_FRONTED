@@ -50,10 +50,13 @@ const Login = () => {
         <div className="bg-white/80 backdrop-blur-xl border border-border rounded-3xl shadow-soft-lg p-8 md:p-10">
           {/* Logo & Title */}
           <div className="text-center mb-10">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary flex items-center justify-center shadow-soft transform hover:rotate-3 transition-transform duration-300">
-              <Building2 className="w-10 h-10 text-white" />
+            <div className="mx-auto mb-6 flex items-center justify-center">
+              <img
+                src="/hostel-logo.jpg"
+                alt="Hari-Saurabh Hostel"
+                className="w-48 h-auto object-contain"
+              />
             </div>
-            <h1 className="text-3xl font-extrabold text-foreground tracking-tight">AVD Hostel</h1>
             <p className="text-sm font-medium text-muted-foreground mt-2 uppercase tracking-widest">Admin Portal</p>
           </div>
 

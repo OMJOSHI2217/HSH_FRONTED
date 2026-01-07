@@ -32,7 +32,7 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
   const filteredMenuItems = menuItems.filter(item => item.path !== location.pathname);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-border shadow-soft">
+    <header className="sticky top-0 z-40 glass-header shadow-soft">
       <div className="flex items-center justify-between h-16 px-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-4">
           <DropdownMenu>
@@ -40,19 +40,19 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+                className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl"
               >
                 <Menu className="w-6 h-6" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 p-2 shadow-soft-lg animate-scale-in">
+            <DropdownMenuContent align="start" className="w-56 p-2 glass-card shadow-soft-lg animate-scale-in border-white/40">
               {filteredMenuItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <DropdownMenuItem
                     key={item.path}
                     onClick={() => navigate(item.path)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-primary/10"
                   >
                     <Icon className="h-4 w-4" />
                     <span className="font-medium">{item.label}</span>
@@ -61,13 +61,16 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
               })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">{title}</h1>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Logo" className="h-10 w-auto object-contain" />
+            <h1 className="text-xl font-bold tracking-tight text-foreground">{title}</h1>
+          </div>
         </div>
 
         <Button
           variant="ghost"
           size="icon"
-          className="text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all rounded-xl"
           onClick={logout}
           title="Logout"
         >
