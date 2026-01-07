@@ -22,6 +22,7 @@ export interface Task {
   status: 'pending' | 'done';
   assignedTo?: string; // Student ID
   assignedToName?: string;
+  category?: string;
   description?: string;
   isPracticeQuestion?: boolean;
   questionContent?: string;

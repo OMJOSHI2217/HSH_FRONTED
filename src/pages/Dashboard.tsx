@@ -41,37 +41,48 @@ const Dashboard = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
+    <div className="min-h-screen pb-20 relative animate-fade-in">
       <AppHeader title="Hostel Hub" />
 
       <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
         {/* Welcome Section */}
-        <div className="space-y-1">
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Welcome back!</h2>
-          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Manage your students efficiently</p>
+        <div className="relative overflow-hidden rounded-3xl p-8 glass-card animate-slide-in">
+          <div className="absolute inset-0 gradient-primary opacity-5"></div>
+          <div className="relative z-10 space-y-2">
+            <h2 className="text-4xl font-extrabold tracking-tight text-foreground bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+              Welcome back!
+            </h2>
+            <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">
+              Manage your students efficiently
+            </p>
+          </div>
         </div>
 
         {/* Student List Section */}
-        <section className="space-y-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+        <section className="space-y-6 animate-slide-up">
+          {/* Search and Actions Row - Fixed Layout */}
+          <div className="flex flex-col gap-4">
+            {/* Search Bar */}
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
               <Input
                 placeholder="Search name, room, mobile..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-14 bg-white border-border/50 rounded-2xl shadow-soft focus:ring-primary/20 focus:border-primary transition-all text-base"
+                className="pl-12 h-14 glass-card border-white/40 rounded-2xl focus:ring-primary/30 focus:border-primary transition-all text-base font-medium shadow-soft"
               />
             </div>
 
-            <div className="flex gap-2">
-              <div className="flex p-1.5 bg-muted/30 backdrop-blur-sm rounded-2xl border border-border/50 shadow-sm">
+            {/* Toggle and Add Button Row */}
+            <div className="flex items-center gap-3 justify-between">
+              {/* Toggle Buttons */}
+              <div className="flex p-1.5 glass-card rounded-2xl shadow-soft">
                 <button
                   onClick={() => setShowAlumni(false)}
                   className={cn(
-                    "px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-300",
+                    "px-6 py-3 text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
                     !showAlumni
-                      ? "bg-primary text-white shadow-soft"
+                      ? "gradient-primary text-white shadow-soft"
                       : "text-muted-foreground hover:text-foreground hover:bg-white/50"
                   )}
                 >
@@ -80,9 +91,9 @@ const Dashboard = () => {
                 <button
                   onClick={() => setShowAlumni(true)}
                   className={cn(
-                    "px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-300",
+                    "px-6 py-3 text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
                     showAlumni
-                      ? "bg-primary text-white shadow-soft"
+                      ? "gradient-primary text-white shadow-soft"
                       : "text-muted-foreground hover:text-foreground hover:bg-white/50"
                   )}
                 >
@@ -90,17 +101,20 @@ const Dashboard = () => {
                 </button>
               </div>
 
+              {/* Add Student Button */}
               <button
                 onClick={() => navigate('/students/add')}
-                className="w-14 h-14 bg-primary text-white rounded-2xl shadow-soft flex items-center justify-center hover:bg-primary/90 hover:scale-[1.05] active:scale-[0.95] transition-all duration-300 shrink-0"
+                className="h-14 px-6 gradient-primary text-white rounded-2xl shadow-soft-lg flex items-center justify-center gap-2 hover:shadow-soft-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 font-bold text-sm shrink-0"
                 title="Add Student"
               >
-                <Plus className="w-6 h-6" />
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">Add Student</span>
               </button>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-1 mb-8">
+          {/* Student List */}
+          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-1">
             {filteredStudents.length > 0 ? (
               filteredStudents.map((student, index) => (
                 <div
@@ -115,8 +129,8 @@ const Dashboard = () => {
                 </div>
               ))
             ) : (
-              <div className="text-center py-20 bg-white/50 border border-dashed border-border rounded-3xl animate-fade-in">
-                <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="text-center py-20 glass-card border-dashed border-2 border-border/50 rounded-3xl animate-fade-in">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Search className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <h3 className="text-xl font-bold text-foreground">No students found</h3>

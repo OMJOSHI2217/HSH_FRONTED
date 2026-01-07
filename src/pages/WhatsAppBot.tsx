@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Wifi, WifiOff, Loader, RefreshCw, Send, MessageSquare, Smartphone, Search, User, CheckCircle, Phone } from 'lucide-react';
-import axios from 'axios';
+import { Wifi, WifiOff, Loader, RefreshCw, Send, MessageSquare, Smartphone, Search, User, CheckCircle, Phone, Gift } from 'lucide-react';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 import { getStudents } from '@/lib/store';
 import { Student } from '@/types';
@@ -22,14 +22,14 @@ const WhatsAppBot = () => {
     const [students, setStudents] = useState<Student[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
-    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [selectedStudents, setSelectedStudents] = useState<Student[]>([]); // Changed to array
     const [showDropdown, setShowDropdown] = useState(false);
 
     // --- Dashboard Logic ---
     const fetchStatus = async () => {
         try {
             // NOTE: Backend endpoints are currently removed, this might fail until restored.
-            const response = await axios.get('/api/whatsapp/connect');
+            const response = await api.get('/api/whatsapp/connect');
             const data = response.data;
 
             if (data.status === 'connected') {
@@ -76,23 +76,52 @@ const WhatsAppBot = () => {
     }, [searchQuery, students]);
 
     const handleSelectStudent = (student: Student) => {
-        setSelectedStudent(student);
-        setMsgForm({ ...msgForm, to: student.mobile || '' });
-        setSearchQuery(`${student.name} (Room: ${student.roomNo})`);
+        if (!selectedStudents.find(s => s.id === student.id)) {
+            setSelectedStudents([...selectedStudents, student]);
+        }
+        setSearchQuery('');
         setShowDropdown(false);
+    };
+
+    const handleRemoveStudent = (studentId: string) => {
+        setSelectedStudents(selectedStudents.filter(s => s.id !== studentId));
     };
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         setSendingMsg(true);
+        let successCount = 0;
+        let failCount = 0;
+
         try {
-            await axios.post('/api/whatsapp/send', msgForm);
-            toast.success('Message sent successfully!');
-            setMsgForm({ to: '', message: '' });
-            setSelectedStudent(null);
-            setSearchQuery('');
+            // Send to all selected students
+            for (const student of selectedStudents) {
+                if (!student.mobile) continue;
+                try {
+                    await api.post('/api/whatsapp/send', {
+                        to: student.mobile,
+                        message: msgForm.message
+                    });
+                    successCount++;
+                } catch (err) {
+                    failCount++;
+                    console.error(`Failed to send to ${student.name}`, err);
+                }
+            }
+
+            if (successCount > 0) {
+                toast.success(`Message sent to ${successCount} student(s)!`);
+                if (failCount > 0) toast.warning(`Failed to send to ${failCount} student(s).`);
+                setMsgForm({ to: '', message: '' });
+                setSelectedStudents([]);
+            } else if (failCount > 0) {
+                toast.error("Failed to send message to any selected student.");
+            } else {
+                toast.info("No students with mobile numbers selected.");
+            }
+
         } catch (error) {
-            toast.error('Failed to send message');
+            toast.error('Global error sending messages');
         } finally {
             setSendingMsg(false);
         }
@@ -134,9 +163,28 @@ const WhatsAppBot = () => {
                                     <p className="text-muted-foreground font-medium">{status.message}</p>
                                 </div>
 
+                                {status.state === 'connected' && (
+                                    <Button
+                                        variant="destructive"
+                                        className="mt-4 rounded-xl font-bold"
+                                        onClick={async () => {
+                                            try {
+                                                await api.post('/api/whatsapp/disconnect');
+                                                toast.success('Disconnected successfully');
+                                                fetchStatus(); // Refresh status immediately
+                                            } catch (error) {
+                                                toast.error('Failed to disconnect');
+                                            }
+                                        }}
+                                    >
+                                        Disconnect & Logout
+                                    </Button>
+                                )}
+
                                 {status.state === 'disconnected' && status.qr && (
                                     <div className="p-4 bg-white rounded-xl shadow-inner mt-4">
                                         <img src={status.qr} alt="QR Code" className="w-48 h-48 object-contain" />
+                                        <p className="text-xs text-muted-foreground mt-2 font-medium uppercase tracking-widest">Scan to Connect</p>
                                     </div>
                                 )}
                             </div>
@@ -151,75 +199,158 @@ const WhatsAppBot = () => {
                         </div>
                     </TabsContent>
 
+                    {/* BIRTHDAYS TAB */}
+                    <TabsContent value="birthdays" className="space-y-6 animate-fade-in">
+                        <Card className="max-w-4xl mx-auto p-8 border-border/50 shadow-soft rounded-3xl">
+                            <div className="text-center mb-8">
+                                <h3 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
+                                    <Gift className="w-6 h-6 text-primary" /> Today's Celebrations
+                                </h3>
+                                <p className="text-muted-foreground">List of students having birthday today</p>
+                            </div>
+
+                            {students.length === 0 ? (
+                                <div className="flex justify-center p-8"><Loader className="animate-spin text-muted-foreground" /></div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {students.filter(student => {
+                                        if (!student.dob) return false;
+                                        const today = new Date();
+                                        const currentMonth = today.getMonth() + 1;
+                                        const currentDay = today.getDate();
+                                        const [year, month, day] = student.dob.split('-').map(Number);
+                                        return month === currentMonth && day === currentDay;
+                                    }).length === 0 ? (
+                                        <div className="text-center py-12 bg-muted/20 rounded-2xl border border-dashed border-border/50">
+                                            <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                <Smartphone className="w-8 h-8 text-muted-foreground/30" />
+                                            </div>
+                                            <p className="text-muted-foreground font-medium">No birthdays today</p>
+                                        </div>
+                                    ) : (
+                                        students.filter(student => {
+                                            if (!student.dob) return false;
+                                            const today = new Date();
+                                            const currentMonth = today.getMonth() + 1;
+                                            const currentDay = today.getDate();
+                                            const [year, month, day] = student.dob.split('-').map(Number);
+                                            return month === currentMonth && day === currentDay;
+                                        }).map(student => (
+                                            <div key={student.id} className="flex items-center justify-between p-4 bg-white/50 border border-border/50 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold text-lg">
+                                                        {student.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-lg">{student.name}</h4>
+                                                        <div className="flex gap-4 text-xs font-semibold text-muted-foreground">
+                                                            <span>🎂 {student.dob}</span>
+                                                            <span>📞 {student.mobile}</span>
+                                                            <span>🏠 {student.roomNo}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    onClick={async () => {
+                                                        try {
+                                                            const message = `Happy Birthday, ${student.name}! 🎉🎂 Wishing you a fantastic day filled with joy and happiness!`;
+                                                            // Optimistic UI updates could go here
+                                                            toast.message(`Sending wish to ${student.name}...`);
+
+                                                            await api.post('/api/whatsapp/send', {
+                                                                to: student.mobile,
+                                                                message: message
+                                                            });
+                                                            toast.success(`Birthday wish sent to ${student.name}!`);
+                                                        } catch (error) {
+                                                            toast.error(`Failed to send wish to ${student.name}`);
+                                                        }
+                                                    }}
+                                                    className="rounded-xl font-bold gap-2"
+                                                >
+                                                    <Send className="w-4 h-4" /> Send Wish
+                                                </Button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </Card>
+                    </TabsContent>
+
                     {/* SENDER TAB */}
                     <TabsContent value="sender" className="space-y-6 animate-fade-in">
                         <Card className="max-w-xl mx-auto p-8 border-border/50 shadow-soft rounded-3xl overflow-visible">
                             <div className="text-center mb-8">
                                 <h3 className="text-2xl font-bold mb-2">Send Message</h3>
-                                <p className="text-muted-foreground">Search for a student to send a message</p>
+                                <p className="text-muted-foreground">Search and select multiple students</p>
                             </div>
 
                             <form onSubmit={handleSendMessage} className="space-y-6">
 
                                 {/* Student Search */}
                                 <div className="space-y-2 relative">
-                                    <Label>Search Student</Label>
+                                    <Label>To ({selectedStudents.length} selected)</Label>
+
+                                    {/* Selected Students Chips */}
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {selectedStudents.map(student => (
+                                            <div key={student.id} className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 animate-fade-in">
+                                                {student.name}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveStudent(student.id)}
+                                                    className="hover:text-destructive transition-colors"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                         <Input
                                             className="pl-9 h-12 rounded-xl"
-                                            placeholder="Start typing name or room no..."
+                                            placeholder="Search to add students..."
                                             value={searchQuery}
-                                            onChange={e => {
-                                                setSearchQuery(e.target.value);
-                                                if (selectedStudent) {
-                                                    setSelectedStudent(null);
-                                                    setMsgForm({ ...msgForm, to: '' });
-                                                }
-                                            }}
+                                            onChange={e => setSearchQuery(e.target.value)}
                                         />
                                     </div>
 
                                     {/* Dropdown */}
                                     {showDropdown && filteredStudents.length > 0 && (
                                         <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 backdrop-blur-xl border border-white/20 shadow-xl rounded-xl z-50 max-h-[250px] overflow-y-auto p-2">
-                                            {filteredStudents.map(student => (
-                                                <div
-                                                    key={student.id}
-                                                    onClick={() => handleSelectStudent(student)}
-                                                    className="p-3 hover:bg-muted/50 rounded-lg cursor-pointer flex items-center gap-3 transition-colors"
-                                                >
-                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                        <User className="w-4 h-4" />
+                                            {filteredStudents.map(student => {
+                                                const isSelected = selectedStudents.some(s => s.id === student.id);
+                                                return (
+                                                    <div
+                                                        key={student.id}
+                                                        onClick={() => !isSelected && handleSelectStudent(student)}
+                                                        className={cn(
+                                                            "p-3 rounded-lg cursor-pointer flex items-center gap-3 transition-colors",
+                                                            isSelected ? "opacity-50 cursor-default bg-muted/50" : "hover:bg-muted/50"
+                                                        )}
+                                                    >
+                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                            <User className="w-4 h-4" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="font-bold text-sm">{student.name}</p>
+                                                            <p className="text-xs text-muted-foreground">Room: {student.roomNo} • {student.mobile}</p>
+                                                        </div>
+                                                        {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
                                                     </div>
-                                                    <div>
-                                                        <p className="font-bold text-sm">{student.name}</p>
-                                                        <p className="text-xs text-muted-foreground">Room: {student.roomNo} • {student.mobile}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
 
-                                    {showDropdown && filteredStudents.length === 0 && searchQuery && !selectedStudent && (
+                                    {showDropdown && filteredStudents.length === 0 && searchQuery && (
                                         <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 backdrop-blur-xl border border-white/20 shadow-xl rounded-xl z-50 p-4 text-center text-muted-foreground text-sm">
                                             No students found
                                         </div>
                                     )}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Phone Number</Label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                        <Input
-                                            className="pl-9 h-12 rounded-xl"
-                                            placeholder="Auto-detected from search"
-                                            value={msgForm.to}
-                                            readOnly
-                                        />
-                                        {selectedStudent && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-success" />}
-                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -230,9 +361,9 @@ const WhatsAppBot = () => {
                                     </div>
                                 </div>
 
-                                <Button type="submit" disabled={sendingMsg || !msgForm.to} className="w-full h-12 rounded-xl font-bold bg-primary hover:bg-primary/90 flex items-center justify-center gap-2">
+                                <Button type="submit" disabled={sendingMsg || selectedStudents.length === 0} className="w-full h-12 rounded-xl font-bold bg-primary hover:bg-primary/90 flex items-center justify-center gap-2">
                                     {sendingMsg ? <Loader className="animate-spin w-5 h-5" /> : <Send className="w-5 h-5" />}
-                                    {sendingMsg ? 'Sending...' : 'Send Message'}
+                                    {sendingMsg ? 'Sending...' : `Send Message to ${selectedStudents.length} Students`}
                                 </Button>
                             </form>
                         </Card>
