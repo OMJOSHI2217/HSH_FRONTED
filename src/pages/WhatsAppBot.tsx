@@ -165,11 +165,10 @@ const WhatsAppBot = () => {
                                     <div className="p-4 bg-white rounded-xl shadow-inner mt-4 flex flex-col items-center">
                                         <div className="w-48 h-48 bg-white flex items-center justify-center">
                                             {status.qr ? (
-                                                <QRCode
-                                                    value={status.qr}
-                                                    size={256}
-                                                    style={{ height: "100%", maxWidth: "100%", width: "100%" }}
-                                                    viewBox={`0 0 256 256`}
+                                                <img
+                                                    src={status.qr}
+                                                    alt="Scan QR"
+                                                    className="w-full h-full object-contain"
                                                 />
                                             ) : (
                                                 <div className="text-muted-foreground text-xs">Waiting for QR...</div>
