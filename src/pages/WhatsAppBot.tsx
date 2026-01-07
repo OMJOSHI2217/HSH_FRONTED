@@ -183,7 +183,11 @@ const WhatsAppBot = () => {
 
                                 {status.state === 'disconnected' && status.qr && (
                                     <div className="p-4 bg-white rounded-xl shadow-inner mt-4">
-                                        <img src={status.qr} alt="QR Code" className="w-48 h-48 object-contain" />
+                                        <img
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(status.qr)}`}
+                                            alt="QR Code"
+                                            className="w-48 h-48 object-contain"
+                                        />
                                         <p className="text-xs text-muted-foreground mt-2 font-medium uppercase tracking-widest">Scan to Connect</p>
                                     </div>
                                 )}
