@@ -1,42 +1,60 @@
+import { Client, LocalAuth } from 'whatsapp-web.js';
 import QRCode from 'qrcode';
 
-// ... (imports)
+let client;
+let qrCodeData = null;
+let connectionStatus = 'disconnected'; // disconnected, connected, qr
 
-// ... (initClient)
+export const initClient = () => {
+    console.log('Initializing WhatsApp Client...');
 
-client.on('qr', async (qr) => {
-    console.log('QR RECEIVED', qr);
-    try {
-        qrCodeData = await QRCode.toDataURL(qr);
-        connectionStatus = 'qr';
-    } catch (err) {
-        console.error('Failed to generate QR code data URL', err);
-    }
-});
+    client = new Client({
+        authStrategy: new LocalAuth(),
+        puppeteer: {
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--disable-gpu'
+            ],
+        }
+    });
 
-client.on('ready', () => {
-    console.log('WhatsApp Client is ready!');
-    connectionStatus = 'connected';
-    qrCodeData = null;
-});
+    client.on('qr', async (qr) => {
+        console.log('QR RECEIVED', qr);
+        try {
+            qrCodeData = await QRCode.toDataURL(qr);
+            connectionStatus = 'qr';
+        } catch (err) {
+            console.error('Failed to generate QR code data URL', err);
+        }
+    });
 
-client.on('authenticated', () => {
-    console.log('WhatsApp Client Authenticated');
-    connectionStatus = 'connected';
-});
+    client.on('ready', () => {
+        console.log('WhatsApp Client is ready!');
+        connectionStatus = 'connected';
+        qrCodeData = null;
+    });
 
-client.on('auth_failure', msg => {
-    console.error('AUTHENTICATION FAILURE', msg);
-    connectionStatus = 'disconnected';
-});
+    client.on('authenticated', () => {
+        console.log('WhatsApp Client Authenticated');
+        connectionStatus = 'connected';
+    });
 
-client.on('disconnected', (reason) => {
-    console.log('Client was disconnected', reason);
-    connectionStatus = 'disconnected';
-    // Re-initialize logic could go here
-});
+    client.on('auth_failure', msg => {
+        console.error('AUTHENTICATION FAILURE', msg);
+        connectionStatus = 'disconnected';
+    });
 
-client.initialize();
+    client.on('disconnected', (reason) => {
+        console.log('Client was disconnected', reason);
+        connectionStatus = 'disconnected';
+    });
+
+    client.initialize();
 };
 
 export const disconnectClient = async () => {
