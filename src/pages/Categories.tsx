@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Tags, Plus, Users, Search, CheckCircle2, X, Trash2 } from 'lucide-react';
+import { Tags, Plus, Users, Search, CheckCircle2, X, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { getStudents } from '@/lib/store';
@@ -19,6 +26,8 @@ interface Karyakarta {
   id: string;
   name: string;
   studentIds: string[];
+  type: 'main' | 'sub';
+  parentId?: string; // Only for sub-karyakartas
 }
 
 const Categories = () => {
@@ -26,7 +35,11 @@ const Categories = () => {
     const saved = localStorage.getItem('karyakartas');
     return saved ? JSON.parse(saved) : [];
   });
+
   const [newKaryakartaName, setNewKaryakartaName] = useState('');
+  const [newKaryakartaType, setNewKaryakartaType] = useState<'main' | 'sub'>('main');
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
+
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedKaryakartaId, setSelectedKaryakartaId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,19 +60,40 @@ const Categories = () => {
 
   const handleAddKaryakarta = () => {
     if (!newKaryakartaName.trim()) return;
+
+    if (newKaryakartaType === 'sub' && !selectedParentId) {
+      toast.error('Please select a Main Karyakarta');
+      return;
+    }
+
     const newKaryakarta: Karyakarta = {
       id: crypto.randomUUID(),
       name: newKaryakartaName.trim(),
-      studentIds: []
+      studentIds: [],
+      type: newKaryakartaType,
+      parentId: newKaryakartaType === 'sub' ? selectedParentId : undefined
     };
+
     setKaryakartas([...karyakartas, newKaryakarta]);
     setNewKaryakartaName('');
-    toast.success('Karyakarta added successfully');
+    // Reset to main for next add
+    setNewKaryakartaType('main');
+    setSelectedParentId('');
+    toast.success(`${newKaryakartaType === 'main' ? 'Main' : 'Sub'} Karyakarta added`);
   };
 
   const handleDeleteKaryakarta = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent opening dialog
-    setKaryakartas(prev => prev.filter(k => k.id !== id));
+    e.stopPropagation();
+    // detailed check: if main, also delete subs? Or warn?
+    // specific requirement not given, but basic logic: delete simple.
+
+    // Check if it has subs
+    const hasSubs = karyakartas.some(k => k.parentId === id);
+    if (hasSubs) {
+      if (!confirm('This Karyakarta has Sub-Karyakartas. Deleting it will also delete them. Continue?')) return;
+    }
+
+    setKaryakartas(prev => prev.filter(k => k.id !== id && k.parentId !== id));
     toast.success('Karyakarta deleted');
   };
 
@@ -77,6 +111,7 @@ const Categories = () => {
   };
 
   const selectedKaryakarta = karyakartas.find(k => k.id === selectedKaryakartaId);
+  const mainKaryakartas = karyakartas.filter(k => k.type === 'main');
 
   // Filter students for the dialog list
   const filteredStudents = students.filter(s =>
@@ -93,92 +128,180 @@ const Categories = () => {
         <div className="space-y-1">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
             <Users className="w-8 h-8 text-primary" />
-            Karyakarta Management
+            Karyakarta Hierarchy
           </h2>
-          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Manage assignments and student groups</p>
+          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Manage groups and sub-groups</p>
         </div>
 
-        {/* Add Karyakarta Input */}
-        <div className="flex gap-4 items-center bg-white p-4 rounded-2xl shadow-sm border border-border/50">
-          <Input
-            placeholder="Enter Karyakarta Name..."
-            value={newKaryakartaName}
-            onChange={(e) => setNewKaryakartaName(e.target.value)}
-            className="h-12 text-lg"
-            onKeyDown={(e) => e.key === 'Enter' && handleAddKaryakarta()}
-          />
-          <Button onClick={handleAddKaryakarta} size="lg" className="h-12 px-6">
-            <Plus className="w-5 h-5 mr-2" /> Add
-          </Button>
-        </div>
-
-        {/* Karyakarta List Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {karyakartas.map((k) => (
-            <div
-              key={k.id}
-              onClick={() => {
-                setSelectedKaryakartaId(k.id);
-                setSearchQuery('');
-              }}
-              className="bg-white p-6 rounded-2xl shadow-soft border border-border/50 cursor-pointer hover:shadow-lg transition-all active:scale-[0.98] group relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 p-4 opacity-50 text-9xl font-black text-gray-50 -z-0 pointer-events-none group-hover:scale-110 transition-transform">
-                {k.studentIds.length}
-              </div>
-              <div className="relative z-10 flex flex-col h-full justify-between">
-                <div>
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-xl font-bold mb-2">{k.name}</h3>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive -mr-2 -mt-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => handleDeleteKaryakarta(k.id, e)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span className="font-medium">{k.studentIds.length} Students Assigned</span>
-                  </div>
-                </div>
-              </div>
+        {/* Add Karyakarta Section */}
+        <div className="bg-white p-5 rounded-3xl shadow-soft border border-border/50 space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="w-full md:w-48 shrink-0">
+              <Select
+                value={newKaryakartaType}
+                onValueChange={(val: 'main' | 'sub') => setNewKaryakartaType(val)}
+              >
+                <SelectTrigger className="h-12 rounded-xl text-base font-medium">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="main">Main Group</SelectItem>
+                  <SelectItem value="sub">Sub Group</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ))}
 
-          {karyakartas.length === 0 && (
-            <div className="col-span-full py-20 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl">
-              <p>No Karyakartas added yet. Add one above to get started.</p>
+            {newKaryakartaType === 'sub' && (
+              <div className="w-full md:w-64 shrink-0 animate-in fade-in slide-in-from-left-4">
+                <Select
+                  value={selectedParentId}
+                  onValueChange={setSelectedParentId}
+                >
+                  <SelectTrigger className="h-12 rounded-xl text-base font-medium">
+                    <SelectValue placeholder="Select Parent Group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mainKaryakartas.map(k => (
+                      <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex-1 flex gap-2">
+              <Input
+                placeholder={newKaryakartaType === 'main' ? "Enter Main Karyakarta Name..." : "Enter Sub-Karyakarta Name..."}
+                value={newKaryakartaName}
+                onChange={(e) => setNewKaryakartaName(e.target.value)}
+                className="h-12 text-lg rounded-xl"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddKaryakarta()}
+              />
+              <Button onClick={handleAddKaryakarta} size="lg" className="h-12 px-6 rounded-xl">
+                <Plus className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Hierarchical List */}
+        <div className="space-y-6">
+          {mainKaryakartas.map((main) => {
+            const subKaryakartas = karyakartas.filter(k => k.parentId === main.id);
+
+            return (
+              <div key={main.id} className="bg-white border border-border/50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                {/* Main Karyakarta Header */}
+                <div className="p-6 bg-gray-50/50 flex items-center justify-between group cursor-pointer" onClick={() => setSelectedKaryakartaId(main.id)}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-bold text-xl">
+                      {main.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-foreground">{main.name}</h3>
+                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                        <Users className="w-3.5 h-3.5" />
+                        {main.studentIds.length} Direct Students
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => handleDeleteKaryakarta(main.id, e)}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {/* Sub Karyakartas List */}
+                {subKaryakartas.length > 0 && (
+                  <div className="border-t border-border/50">
+                    <div className="px-6 py-3 bg-gray-50 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                      Sub Groups
+                    </div>
+                    <div className="divide-y divide-border/50">
+                      {subKaryakartas.map(sub => (
+                        <div
+                          key={sub.id}
+                          className="p-4 pl-12 hover:bg-gray-50 cursor-pointer flex items-center justify-between group/sub transition-colors"
+                          onClick={() => setSelectedKaryakartaId(sub.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-primary/40" />
+                            <span className="font-semibold text-foreground">{sub.name}</span>
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 ml-2">
+                              {sub.studentIds.length} Students
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover/sub:opacity-100 transition-opacity"
+                            onClick={(e) => handleDeleteKaryakarta(sub.id, e)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {subKaryakartas.length === 0 && (
+                  <div className="px-6 py-4 text-sm text-muted-foreground italic border-t border-border/50 pl-20">
+                    No sub-groups added.
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {mainKaryakartas.length === 0 && (
+            <div className="py-20 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl">
+              <p>No Karyakarta hierarchies created yet.</p>
             </div>
           )}
         </div>
 
-        {/* Assignment Dialog */}
+        {/* Assignment Dialog (Reused for both Main and Sub) */}
         <Dialog open={!!selectedKaryakartaId} onOpenChange={(open) => !open && setSelectedKaryakartaId(null)}>
           <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold flex items-center justify-between">
-                <span>{selectedKaryakarta?.name}</span>
+                <div className="flex flex-col">
+                  <span className="flex items-center gap-2">
+                    {selectedKaryakarta?.type === 'sub' && (
+                      <span className="text-muted-foreground font-normal text-lg">
+                        {karyakartas.find(k => k.id === selectedKaryakarta?.parentId)?.name} /
+                      </span>
+                    )}
+                    {selectedKaryakarta?.name}
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest mt-1">
+                    {selectedKaryakarta?.type === 'main' ? 'Main Group' : 'Sub Group'}
+                  </span>
+                </div>
                 <Badge variant="secondary" className="text-lg px-3">
                   {selectedKaryakarta?.studentIds.length} Students
                 </Badge>
               </DialogTitle>
             </DialogHeader>
 
-            <div className="relative">
+            <div className="relative mt-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search students..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-12 text-base"
               />
             </div>
 
-            <ScrollArea className="flex-1 pr-4">
-              <div className="space-y-2 mt-4">
+            <ScrollArea className="flex-1 pr-4 mt-2">
+              <div className="space-y-2">
                 {filteredStudents.map(student => {
                   const isAssigned = selectedKaryakarta?.studentIds.includes(student.id);
                   return (

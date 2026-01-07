@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, GraduationCap, Phone, CheckCircle2, Clock, Shield } from 'lucide-react';
+import { GraduationCap, Phone, MessageCircle } from 'lucide-react';
 import { Student } from '@/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,11 +8,9 @@ interface StudentListItemProps {
   student: Student;
   onClick: () => void;
   hideContactActions?: boolean;
-  whatsappMessage?: string;
-  onVerify?: (e: React.MouseEvent) => void;
 }
 
-export const StudentListItem = ({ student, onClick, hideContactActions = false, whatsappMessage, onVerify }: StudentListItemProps) => {
+export const StudentListItem = ({ student, onClick, hideContactActions = false }: StudentListItemProps) => {
   const handleCall = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!student.mobile) return;
@@ -23,11 +21,11 @@ export const StudentListItem = ({ student, onClick, hideContactActions = false, 
     e.stopPropagation();
     // Remove all non-numeric characters for the WhatsApp API
     const cleanNumber = (student.mobile || '').replace(/[^0-9]/g, '');
-    const url = whatsappMessage
-      ? `https://wa.me/${cleanNumber}?text=${encodeURIComponent(whatsappMessage)}`
-      : `https://wa.me/${cleanNumber}`;
+    const url = `https://wa.me/${cleanNumber}`;
     window.open(url, '_blank');
   };
+
+
 
   return (
     <div
@@ -56,25 +54,20 @@ export const StudentListItem = ({ student, onClick, hideContactActions = false, 
         <div className="flex items-center gap-2 text-muted-foreground">
           <Phone className="w-3.5 h-3.5" />
           <p className="text-sm font-medium truncate">{student.mobile || 'No Mobile'}</p>
-          {student.whatsappVerified === 'verified' && (
-            <CheckCircle2 className="w-3.5 h-3.5 text-success fill-success/10" />
-          )}
-          {student.whatsappVerified === 'pending' && (
-            <Clock className="w-3.5 h-3.5 text-warning fill-warning/10" />
-          )}
+
         </div>
       </div>
 
       <div className="flex items-center gap-2">
         {!hideContactActions && (
-          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="flex items-center gap-1.5 opacity-100 transition-opacity duration-200">
             <Button
               size="icon"
               variant="secondary"
               className="h-10 w-10 text-success bg-success/10 hover:bg-success hover:text-white rounded-xl transition-all shadow-sm"
               onClick={handleWhatsApp}
             >
-              <img src="/whatsapp-icon.png" alt="WA" className="w-5 h-5 object-contain" />
+              <MessageCircle className="w-5 h-5 text-green-600" />
             </Button>
             <Button
               size="icon"
@@ -84,22 +77,10 @@ export const StudentListItem = ({ student, onClick, hideContactActions = false, 
             >
               <Phone className="w-5 h-5" />
             </Button>
-            {onVerify && student.whatsappVerified !== 'verified' && (
-              <Button
-                size="icon"
-                variant="secondary"
-                className="h-10 w-10 text-orange-600 bg-orange-50 hover:bg-orange-600 hover:text-white rounded-xl transition-all shadow-sm"
-                onClick={(e) => { e.stopPropagation(); onVerify(e); }}
-                title="Verify WhatsApp Number"
-              >
-                <Shield className="w-5 h-5" />
-              </Button>
-            )}
+
           </div>
         )}
-        <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-          <ChevronRight className="w-5 h-5 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
-        </div>
+
       </div>
     </div>
   );

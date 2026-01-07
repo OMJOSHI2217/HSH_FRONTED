@@ -66,7 +66,6 @@ const Birthdays = () => {
                                     <StudentListItem
                                         student={student}
                                         onClick={() => navigate(`/students/${student.id}`)}
-                                        whatsappMessage="Wishing you a very Happy Birthday! 🎂✨"
                                     />
                                 </div>
                             ))

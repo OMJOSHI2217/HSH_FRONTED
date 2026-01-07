@@ -12,7 +12,7 @@ export interface Student {
   interest: string;
   isAlumni: boolean;
   createdAt: string;
-  whatsappVerified?: 'verified' | 'unverified' | 'pending';
+
 }
 
 export interface Task {
@@ -20,7 +20,11 @@ export interface Task {
   title: string;
   dueDate: string;
   status: 'pending' | 'done';
-  category: string;
+  assignedTo?: string; // Student ID
+  assignedToName?: string;
+  description?: string;
+  isPracticeQuestion?: boolean;
+  questionContent?: string;
 }
 
 export interface Category {

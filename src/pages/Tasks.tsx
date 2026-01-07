@@ -3,13 +3,16 @@ import { Plus, CheckCircle2, CircleDashed, ClipboardList } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { TaskItem } from '@/components/TaskItem';
 import { Button } from '@/components/ui/button';
-import { mockTasks } from '@/data/mockData';
 import { Task } from '@/types';
+import { Input } from '@/components/ui/input';
+import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 const Tasks = () => {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const toggleTask = (taskId: string) => {
     setTasks(prev =>
@@ -22,9 +25,14 @@ const Tasks = () => {
   };
 
   const filteredTasks = tasks.filter(task => {
-    if (filter === 'all') return true;
-    return task.status === filter;
+    const matchesFilter = filter === 'all' ? true : task.status === filter;
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
+
+  const handleCreateTask = (newTask: Task) => {
+    setTasks(prev => [newTask, ...prev]);
+  };
 
   const pendingCount = tasks.filter(t => t.status === 'pending').length;
   const doneCount = tasks.filter(t => t.status === 'done').length;
@@ -41,6 +49,17 @@ const Tasks = () => {
             Tasks
           </h2>
           <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Stay on top of your responsibilities</p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search tasks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-12 h-14 bg-white border-border/50 rounded-2xl shadow-soft focus:ring-primary/20 focus:border-primary transition-all text-base"
+          />
         </div>
 
         {/* Stats */}
@@ -111,15 +130,21 @@ const Tasks = () => {
           )}
         </div>
 
-        {/* FAB */}
         <Button
           className="fixed bottom-8 right-8 w-16 h-16 rounded-2xl shadow-soft-lg bg-primary hover:bg-primary/90 hover:scale-[1.1] active:scale-[0.9] transition-all z-50 group"
           size="icon"
+          onClick={() => setShowCreateDialog(true)}
         >
           <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
         </Button>
+
+        <CreateTaskDialog
+          open={showCreateDialog}
+          onOpenChange={setShowCreateDialog}
+          onTaskCreate={handleCreateTask}
+        />
       </main>
-    </div>
+    </div >
   );
 };
 

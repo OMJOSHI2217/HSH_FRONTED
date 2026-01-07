@@ -47,6 +47,11 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
             <Tag className="w-3.5 h-3.5" />
             {task.category}
           </span>
+          {task.assignedToName && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+              👤 {task.assignedToName}
+            </span>
+          )}
         </div>
       </div>
 

@@ -27,7 +27,7 @@ const AddStudent = () => {
     year: '',
     result: '',
     interest: '',
-    whatsappVerified: 'unverified',
+
   });
 
   useEffect(() => {
@@ -48,7 +48,7 @@ const AddStudent = () => {
               year: student.year || '',
               result: student.result || '',
               interest: student.interest || '',
-              whatsappVerified: student.whatsappVerified || 'unverified',
+
             });
           } else {
             // Handle not found
@@ -77,7 +77,7 @@ const AddStudent = () => {
         await updateStudent(id, {
           ...formData,
           age: Number(formData.age),
-          whatsappVerified: formData.whatsappVerified as 'verified' | 'unverified' | 'pending',
+
         });
         toast({
           title: 'Student Updated',
@@ -89,7 +89,7 @@ const AddStudent = () => {
           ...formData,
           age: Number(formData.age),
           isAlumni: false,
-          whatsappVerified: formData.whatsappVerified as 'verified' | 'unverified' | 'pending',
+
         });
         toast({
           title: 'Student Added',
@@ -118,17 +118,7 @@ const AddStudent = () => {
     { name: 'year', label: 'Year', type: 'text', placeholder: '2nd Year' },
     { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: '8.5 CGPA' },
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
-    {
-      name: 'whatsappVerified',
-      label: 'WhatsApp Verification',
-      type: 'select',
-      placeholder: 'Select Status',
-      options: [
-        { label: 'Verified', value: 'verified' },
-        { label: 'Unverified', value: 'unverified' },
-        { label: 'Pending', value: 'pending' },
-      ]
-    },
+
   ];
 
   return (
@@ -167,36 +157,16 @@ const AddStudent = () => {
                 <Label htmlFor={field.name} className="text-sm font-bold text-foreground/80 ml-1">
                   {field.label}
                 </Label>
-                {field.type === 'select' ? (
-                  <div className="relative">
-                    <select
-                      id={field.name}
-                      name={field.name}
-                      value={formData[field.name as keyof typeof formData]}
-                      onChange={(e: any) => handleChange(e)}
-                      className="h-12 w-full appearance-none bg-background/50 border border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium px-3 pr-8"
-                      required
-                    >
-                      {field.options?.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-foreground/50">
-                      <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                    </div>
-                  </div>
-                ) : (
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    type={field.type}
-                    placeholder={field.placeholder}
-                    value={formData[field.name as keyof typeof formData]}
-                    onChange={handleChange}
-                    className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium"
-                    required
-                  />
-                )}
+                <Input
+                  id={field.name}
+                  name={field.name}
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  value={formData[field.name as keyof typeof formData]}
+                  onChange={handleChange}
+                  className="h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium"
+                  required
+                />
               </div>
             ))}
           </div>
@@ -234,7 +204,7 @@ const AddStudent = () => {
                 result: '8.5',
                 interest: 'Coding',
                 isAlumni: false,
-                whatsappVerified: 'unverified',
+
                 createdAt: new Date().toISOString()
               }]}
               onUpdate={async (newStudents) => {
