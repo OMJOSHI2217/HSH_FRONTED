@@ -10,6 +10,7 @@ import { Student } from '@/types';
 import { Search, User2, Calendar, ClipboardList, HelpCircle, Send, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import axios from 'axios';
 
 interface CreateTaskDialogProps {
     open: boolean;
@@ -48,7 +49,8 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
         )
     );
 
-    const handleSubmit = () => {
+
+    const handleSubmit = async () => {
         if (!taskData.title || !taskData.dueDate) {
             toast.error("Please fill in all required fields");
             return;
@@ -66,18 +68,33 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
             questionContent: taskData.questionContent
         };
 
-        // "Send to WhatsApp" Logic
-        if (selectedStudent?.mobile && taskData.isPracticeQuestion) {
-            const cleanNumber = selectedStudent.mobile.replace(/[^0-9]/g, '');
-            const message = `*New Task Assigned: ${taskData.title}*\n\n${taskData.questionContent}\n\n📅 Due Date: ${taskData.dueDate}\n\nPlease submit by the deadline.`;
-            const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
-            window.open(url, '_blank');
-            toast.success("WhatsApp link opened!");
+        // Automatic WhatsApp Notification
+        if (selectedStudent?.mobile) {
+            const message = `*New Task Assigned: ${taskData.title}*\n\n${taskData.questionContent ? `Question: ${taskData.questionContent}\n\n` : ''}📅 Due Date: ${taskData.dueDate}\n\nPlease submit by the deadline.`;
+
+            toast.message("Assigning task & sending notification...");
+
+            try {
+                // Try sending via backend bot first
+                await axios.post('/api/whatsapp/send', {
+                    to: selectedStudent.mobile,
+                    message: message
+                });
+                toast.success("Notification sent via WhatsApp Bot");
+            } catch (error) {
+                console.error("Bot send failed", error);
+
+                // Fallback: Open WhatsApp Web if bot fails? 
+                // User asked to "send the message", implying automation. 
+                // If automation fails, maybe we shouldn't force open window unless explicitly requested.
+                // But for reliability let's notify user it failed.
+                toast.error("Task assigned, but failed to send WhatsApp notification.");
+            }
         }
 
         onTaskCreate(newTask);
         onOpenChange(false);
-        toast.success("Task created successfully");
+        if (!selectedStudent?.mobile) toast.success("Task created successfully (No mobile number)");
     };
 
     return (

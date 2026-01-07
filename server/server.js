@@ -9,6 +9,9 @@ app.use(cors());
 app.use(express.json());
 
 // Initialize WhatsApp Client
+import { initClient } from './client.js';
+initClient();
+
 // Initialize Routes
 initRoutes(app);
 

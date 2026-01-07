@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Cake, Sparkles } from 'lucide-react';
+import { Cake, Sparkles, Send } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
-import { StudentListItem } from '@/components/StudentListItem';
+import { Button } from '@/components/ui/button';
 import { getStudents } from '@/lib/store';
 import { Student } from '@/types';
+import axios from 'axios';
+import { toast } from 'sonner';
 
 const Birthdays = () => {
     const navigate = useNavigate();
@@ -60,13 +62,47 @@ const Birthdays = () => {
                             birthdayStudents.map((student, index) => (
                                 <div
                                     key={student.id}
-                                    className="animate-slide-in"
+                                    className="animate-slide-in w-full flex items-center justify-between p-5 bg-white border border-border/50 rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg"
                                     style={{ animationDelay: `${index * 50}ms` }}
                                 >
-                                    <StudentListItem
-                                        student={student}
+                                    <div
+                                        className="flex items-center gap-4 flex-1 cursor-pointer"
                                         onClick={() => navigate(`/students/${student.id}`)}
-                                    />
+                                    >
+                                        <div className="w-14 h-14 rounded-2xl bg-primary flex flex-col items-center justify-center shadow-soft">
+                                            <span className="text-white font-bold text-lg leading-none">{student.roomNo}</span>
+                                            <span className="text-white/70 font-bold text-[10px] uppercase tracking-tighter mt-0.5">Room</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-lg text-foreground">{student.name}</h3>
+                                            <p className="text-sm font-medium text-muted-foreground">{student.mobile || 'No Mobile'}</p>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (!student.mobile) {
+                                                toast.error("No mobile number found");
+                                                return;
+                                            }
+                                            try {
+                                                const message = `Happy Birthday, ${student.name}! 🎉🎂 Wishing you a fantastic day filled with joy and happiness!`;
+                                                toast.info(`Sending wish to ${student.name}...`);
+
+                                                await axios.post('/api/whatsapp/send', {
+                                                    to: student.mobile,
+                                                    message: message
+                                                });
+                                                toast.success(`Birthday wish sent to ${student.name}!`);
+                                            } catch (error) {
+                                                toast.error(`Failed to send wish to ${student.name}`);
+                                            }
+                                        }}
+                                        className="rounded-xl font-bold gap-2 bg-primary text-white hover:bg-primary/90 shadow-md"
+                                    >
+                                        <Send className="w-4 h-4" /> Send Wish
+                                    </Button>
                                 </div>
                             ))
                         ) : (
