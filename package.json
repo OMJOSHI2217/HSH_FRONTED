@@ -100,7 +100,7 @@
     "js-yaml": "^4.1.0"
   },
   "description": "**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID",
-  "main": "debug-bulk.js",
+  "main": "server/server.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HARSHIL290307PATEL/hostel-hub-admin.git"
