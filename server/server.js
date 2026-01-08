@@ -17,6 +17,11 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// Root endpoint to prevent 404s on deployment checks
+app.get('/', (req, res) => {
+    res.status(200).send('WhatsApp Bot Server is Running');
+});
+
 // Parse JSON bodies (as sent by API clients)
 initRoutes(app);
 

@@ -20,10 +20,14 @@ export const initClient = () => {
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--single-process', // Critical for low-memory containers
+                '--no-zygote'      // Critical for low-memory containers
             ],
         }
     });
+
+    console.log(`[Init] Using executablePath: ${process.env.PUPPETEER_EXECUTABLE_PATH || 'Bundled'}`);
 
     client.on('qr', async (qr) => {
         console.log('QR RECEIVED', qr);
