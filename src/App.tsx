@@ -1,61 +1,72 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Students from "./pages/Students";
-import Birthdays from "./pages/Birthdays";
-import StudentDetails from "./pages/StudentDetails";
-import AddStudent from "./pages/AddStudent";
-import Update from "./pages/Update";
-import Categories from "./pages/Categories";
-import Tasks from "./pages/Tasks";
-import NotFound from "./pages/NotFound";
+import { useEffect, useState } from "react";
 
-const queryClient = new QueryClient();
+const API = "https://whatsapp-api.onrender.com";
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
-};
+export default function App() {
+  const [userId, setUserId] = useState("");
+  const [qr, setQr] = useState(null);
+  const [status, setStatus] = useState("");
+  const [number, setNumber] = useState("");
+  const [message, setMessage] = useState("");
 
-const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const startSession = async () => {
+    await fetch(`${API}/api/session/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId })
+    });
+  };
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const interval = setInterval(async () => {
+      const res = await fetch(`${API}/api/qr/${userId}`);
+      const data = await res.json();
+      setStatus(data.status);
+      if (data.qr) setQr(data.qr);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [userId]);
+
+  const sendMessage = async () => {
+    await fetch(`${API}/api/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, number, message })
+    });
+    alert("Message sent!");
+  };
 
   return (
-    <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
-      <Route path="/birthdays" element={<ProtectedRoute><Birthdays /></ProtectedRoute>} />
-      <Route path="/students/add" element={<ProtectedRoute><AddStudent /></ProtectedRoute>} />
-      <Route path="/students/:id" element={<ProtectedRoute><StudentDetails /></ProtectedRoute>} />
-      <Route path="/students/:id/edit" element={<ProtectedRoute><AddStudent /></ProtectedRoute>} />
-      <Route path="/update" element={<ProtectedRoute><Update /></ProtectedRoute>} />
-      <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
+    <div style={{ padding: 20 }}>
+      <h2>WhatsApp Automation</h2>
 
-      <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-      <Route path="*" element={<NotFound />} />
-    </Routes >
+      <input
+        placeholder="Enter User ID"
+        value={userId}
+        onChange={(e) => setUserId(e.target.value)}
+      />
+      <button onClick={startSession}>Start Session</button>
+
+      <h3>Status: {status}</h3>
+
+      {qr && <img src={qr} alt="QR Code" width={250} />}
+
+      <hr />
+
+      <input
+        placeholder="Phone Number"
+        value={number}
+        onChange={(e) => setNumber(e.target.value)}
+      />
+      <input
+        placeholder="Message"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+      />
+      <button onClick={sendMessage}>Send Message</button>
+    </div>
   );
-};
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
+}
