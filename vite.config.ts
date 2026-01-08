@@ -19,6 +19,17 @@ export default defineConfig(({ mode }) => ({
       ignored: ['**/.wwebjs_auth/**', '**/.wwebjs_cache/**']
     }
   },
+  preview: {
+    host: "::",
+    port: 4173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
   plugins: [
     react(),
     VitePWA({

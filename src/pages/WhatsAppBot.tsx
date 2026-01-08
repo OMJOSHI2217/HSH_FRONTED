@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import QRCode from 'react-qr-code';
+// import QRCode from 'react-qr-code'; // Removed unused import to avoid conflicts
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,9 +14,43 @@ import { getStudents } from '@/lib/store';
 import { Student } from '@/types';
 import { cn } from '@/lib/utils';
 
+const StatusIndicator = ({ status }: { status: string }) => {
+    if (status === 'connected') {
+        return (
+            <>
+                <div className="w-4 h-4 rounded-full bg-success shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                <div className="p-4 bg-muted/20 rounded-full">
+                    <Wifi className="w-10 h-10 text-success" />
+                </div>
+            </>
+        )
+    }
+    if (status === 'loading') {
+        return (
+            <>
+                <div className="w-4 h-4 rounded-full bg-primary shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                <div className="p-4 bg-muted/20 rounded-full">
+                    <Loader className="w-10 h-10 animate-spin text-primary" />
+                </div>
+            </>
+        )
+    }
+    return (
+        <>
+            <div className="w-4 h-4 rounded-full bg-destructive shadow-[0_0_15px_rgba(239,68,68,0.5)]" />
+            <div className="p-4 bg-muted/20 rounded-full">
+                <WifiOff className="w-10 h-10 text-destructive" />
+            </div>
+        </>
+    )
+}
+
 const WhatsAppBot = () => {
     // --- Dashboard State ---
     const [status, setStatus] = useState({ state: 'loading', message: 'Initializing...', qr: null });
+    const [qrTimer, setQrTimer] = useState(120);
+    const [isQrExpired, setIsQrExpired] = useState(false);
+    const [lastQr, setLastQr] = useState<string | null>(null);
 
     // --- Sender State ---
     const [students, setStudents] = useState<Student[]>([]);
@@ -36,8 +70,15 @@ const WhatsAppBot = () => {
 
             if (data.status === 'connected') {
                 setStatus({ state: 'connected', message: 'WhatsApp is connected', qr: null });
+                setLastQr(null);
             } else if (data.status === 'qr') {
                 setStatus({ state: 'disconnected', message: 'Scan QR Code', qr: data.qrCode });
+                // Reset timer if QR changed
+                if (data.qrCode !== lastQr) {
+                    setQrTimer(120);
+                    setIsQrExpired(false);
+                    setLastQr(data.qrCode);
+                }
             } else {
                 setStatus({ state: 'loading', message: data.message || 'Loading...', qr: null });
             }
@@ -49,15 +90,35 @@ const WhatsAppBot = () => {
 
     useEffect(() => {
         fetchStatus();
-        const interval = setInterval(fetchStatus, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        const interval = setInterval(fetchStatus, 3000); // Poll faster (3s) for responsiveness
+
+        // QR Timer Countdown
+        const timerInterval = setInterval(() => {
+            setQrTimer(prev => {
+                if (prev <= 1) {
+                    setIsQrExpired(true);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => {
+            clearInterval(interval);
+            clearInterval(timerInterval);
+        };
+    }, [lastQr]); // Re-bind if QR changes to ensure clean timer logic
 
     const handleDisconnect = async () => {
         try {
             await api.post('/api/whatsapp/disconnect');
             toast.success('Disconnected successfully');
             setStatus({ state: 'loading', message: 'Disconnecting...', qr: null });
+            // Force reset local state
+            setLastQr(null);
+            setQrTimer(120);
+            setIsQrExpired(false);
+
             setTimeout(fetchStatus, 2000);
         } catch (error) {
             toast.error('Failed to disconnect');
@@ -139,12 +200,8 @@ const WhatsAppBot = () => {
                     {/* DASHBOARD TAB */}
                     <TabsContent value="dashboard" className="space-y-6 animate-fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white/80 backdrop-blur-md border border-white/20 shadow-soft rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-4 min-h-[300px]">
-                                <div className={`w-4 h-4 rounded-full ${status.state === 'connected' ? 'bg-success shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-destructive shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`} />
-
-                                <div className="p-4 bg-muted/20 rounded-full">
-                                    {status.state === 'connected' ? <Wifi className="w-10 h-10 text-success" /> : status.state === 'loading' ? <Loader className="w-10 h-10 animate-spin text-primary" /> : <WifiOff className="w-10 h-10 text-destructive" />}
-                                </div>
+                            <div className="bg-white/80 backdrop-blur-md border border-white/20 shadow-soft rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-4 min-h-[350px]">
+                                <StatusIndicator status={status.state} />
 
                                 <div>
                                     <h3 className="text-2xl font-bold mb-1">{status.state === 'connected' ? 'Connected' : status.state === 'loading' ? 'Initializing' : 'Disconnected'}</h3>
@@ -162,19 +219,29 @@ const WhatsAppBot = () => {
                                 )}
 
                                 {status.state === 'disconnected' && (
-                                    <div className="p-4 bg-white rounded-xl shadow-inner mt-4 flex flex-col items-center">
-                                        <div className="w-48 h-48 bg-white flex items-center justify-center">
-                                            {status.qr ? (
-                                                <img
-                                                    src={status.qr}
-                                                    alt="Scan QR"
-                                                    className="w-full h-full object-contain"
-                                                />
+                                    <div className="p-4 bg-white rounded-xl shadow-inner mt-4 flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                                        <div className="w-56 h-56 bg-white flex items-center justify-center relative">
+                                            {status.qr && !isQrExpired ? (
+                                                <>
+                                                    <img
+                                                        src={status.qr}
+                                                        alt="Scan QR"
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-bold text-muted-foreground whitespace-nowrap">
+                                                        Refresh in {qrTimer}s
+                                                    </div>
+                                                </>
                                             ) : (
-                                                <div className="text-muted-foreground text-xs">Waiting for QR...</div>
+                                                <div className="flex flex-col items-center gap-3">
+                                                    <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+                                                    <div className="text-muted-foreground text-xs font-medium">
+                                                        {isQrExpired ? 'Regenerating...' : 'Generating QR...'}
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-4 font-medium uppercase tracking-widest">Scan to Connect</p>
+                                        <p className="text-xs text-muted-foreground mt-8 font-medium uppercase tracking-widest">Scan to Connect</p>
                                     </div>
                                 )}
                             </div>

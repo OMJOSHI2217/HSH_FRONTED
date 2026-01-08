@@ -1,4 +1,5 @@
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth } = pkg;
 import QRCode from 'qrcode';
 
 let client;
@@ -54,7 +55,14 @@ export const initClient = () => {
         connectionStatus = 'disconnected';
     });
 
-    client.initialize();
+    try {
+        client.initialize().catch(err => {
+            console.error('Client initialization failed asynchronously:', err);
+            // Attempt to restart or just log
+        });
+    } catch (err) {
+        console.error('Client initialization failed synchronously:', err);
+    }
 };
 
 export const disconnectClient = async () => {
