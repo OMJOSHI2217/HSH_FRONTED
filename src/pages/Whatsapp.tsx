@@ -1,56 +1,76 @@
 import { useEffect, useState } from "react";
-import { Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-const API_BASE = "https://whatsapp-api.onrender.com";
+// const API_BASE = "https://whatsapp-api.onrender.com";
+const API_BASE = "http://localhost:4000"; // Keep local for debugging per user flow
 
 export default function Whatsapp() {
-    const [data, setData] = useState<{ status: string; qr?: string } | null>(null);
+    const [connected, setConnected] = useState(false);
+    const [qr, setQr] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [retryCount, setRetryCount] = useState(0);
+    const [number, setNumber] = useState("");
+    const [message, setMessage] = useState("");
+    const [sending, setSending] = useState(false);
 
     useEffect(() => {
-        // Initial start session to ensure backend is ready/generating
-        fetch(`${API_BASE}/api/session/start`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: "harshil" })
-        }).catch(console.error);
-
-        const interval = setInterval(async () => {
+        const checkStatus = async () => {
             try {
-                const res = await fetch(`${API_BASE}/api/qr/harshil`);
-                if (!res.ok) throw new Error(`Server Error: ${res.status}`);
+                // 1. Check if connected
+                const statusRes = await fetch(`${API_BASE}/api/status`);
+                const statusData = await statusRes.json();
 
-                const result = await res.json();
-                setData(result);
+                if (statusData.connected) {
+                    setConnected(true);
+                    setQr(null);
+                    setLoading(false);
+                } else {
+                    setConnected(false);
+                    // 2. If not connected, poll for QR
+                    const qrRes = await fetch(`${API_BASE}/api/qr`);
+                    const qrData = await qrRes.json();
+
+                    if (qrData.status === "qr") {
+                        setQr(qrData.qr);
+                    } else if (qrData.status === "connected") {
+                        setConnected(true);
+                    }
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error("Connection Error:", error);
                 setLoading(false);
-                setError("");
-            } catch (err: any) {
-                setLoading(false);
-                setError("Server Unreachable");
-                console.error("Poll Error:", err);
             }
-        }, 3000);
+        };
 
+        const interval = setInterval(checkStatus, 1000); // 1s polling
         return () => clearInterval(interval);
-    }, [retryCount]);
+    }, []);
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "connected": return "text-green-500 bg-green-500/10 border-green-500/20";
-            case "qr": return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
-            default: return "text-slate-500 bg-slate-500/10 border-slate-500/20";
+    const handleSendMessage = async () => {
+        if (!number || !message) {
+            toast.error("Please enter number and message");
+            return;
         }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case "connected": return "Connected";
-            case "qr": return "Scan QR Code";
-            case "waiting": return "Waiting for Server...";
-            default: return "Initializing";
+        setSending(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/send`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ number, message })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("Message Sent! 🚀");
+                setMessage("");
+            } else {
+                toast.error("Failed to send: " + data.error);
+            }
+        } catch (error) {
+            toast.error("Network Error");
+        } finally {
+            setSending(false);
         }
     };
 
@@ -58,70 +78,65 @@ export default function Whatsapp() {
         <div className="flex flex-col items-center justify-center min-h-[80vh] p-4 text-center animate-fade-in">
             <div className="w-full max-w-md p-8 glass-card rounded-3xl shadow-soft-lg border-white/40 space-y-8">
 
-                <div className="space-y-2">
-                    <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                        WhatsApp Verification
-                    </h2>
-                    <p className="text-muted-foreground text-sm font-medium">
-                        Link your device to enable automation
-                    </p>
-                </div>
+                <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+                    WhatsApp Automation
+                </h2>
 
-                {/* Status Indicator */}
-                <div className={cn(
-                    "flex items-center justify-center gap-2 px-4 py-3 rounded-xl border font-semibold transition-all duration-300",
-                    error ? "text-red-500 bg-red-500/10 border-red-500/20" : getStatusColor(data?.status || "")
-                )}>
-                    {error ? (
-                        <AlertCircle className="w-5 h-5" />
-                    ) : data?.status === "connected" ? (
-                        <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                    )}
-                    <span>{error || getStatusText(data?.status || "")}</span>
-                </div>
+                {loading ? (
+                    <div className="flex justify-center p-8">
+                        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                    </div>
+                ) : connected ? (
+                    <div className="space-y-6 animate-scale-in">
+                        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center justify-center gap-2 text-green-600 font-bold">
+                            <CheckCircle2 className="w-6 h-6" />
+                            <span>Connected & Ready</span>
+                        </div>
 
-                {/* content area */}
-                <div className="min-h-[250px] flex flex-col items-center justify-center rounded-2xl bg-white/50 border-2 border-dashed border-slate-200 p-4 relative overflow-hidden">
-                    {error ? (
-                        <div className="space-y-4">
-                            <p className="text-sm text-muted-foreground max-w-[200px]">
-                                Unable to connect to WhatsApp Server. It might be offline or sleeping.
-                            </p>
+                        <div className="space-y-4 text-left">
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground uppercase">Phone Number</label>
+                                <input
+                                    className="w-full p-3 rounded-xl border bg-white/50 focus:ring-2 ring-primary/20 outline-none"
+                                    placeholder="e.g. 919876543210"
+                                    value={number}
+                                    onChange={e => setNumber(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground uppercase">Message</label>
+                                <textarea
+                                    className="w-full p-3 rounded-xl border bg-white/50 focus:ring-2 ring-primary/20 outline-none min-h-[100px]"
+                                    placeholder="Type your message..."
+                                    value={message}
+                                    onChange={e => setMessage(e.target.value)}
+                                />
+                            </div>
                             <button
-                                onClick={() => setRetryCount(c => c + 1)}
-                                className="px-4 py-2 text-xs font-bold bg-primary text-white rounded-lg shadow-soft hover:shadow-soft-lg transition-all"
+                                onClick={handleSendMessage}
+                                disabled={sending}
+                                className="w-full py-3 bg-primary text-white rounded-xl font-bold shadow-soft hover:shadow-soft-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                             >
-                                Retry Connection
+                                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                Send Message
                             </button>
                         </div>
-                    ) : data?.status === "connected" ? (
-                        <div className="text-center space-y-4 animate-scale-in">
-                            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/30">
-                                <CheckCircle2 className="w-10 h-10 text-white" />
+                    </div>
+                ) : (
+                    <div className="space-y-4 animate-slide-in">
+                        <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-600 font-medium text-sm">
+                            Scan QR with WhatsApp to Link
+                        </div>
+                        {qr ? (
+                            <img src={qr} alt="QR Code" className="w-64 h-64 mx-auto object-contain rounded-xl border-4 border-white shadow-md" />
+                        ) : (
+                            <div className="w-64 h-64 mx-auto flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
+                                <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-2" />
+                                <span className="text-xs text-slate-400">Waiting for QR...</span>
                             </div>
-                            <p className="font-bold text-foreground">Device is Linked!</p>
-                        </div>
-                    ) : data?.qr ? (
-                        <div className="space-y-4 animate-slide-in">
-                            <img
-                                src={data.qr}
-                                alt="Scan QR"
-                                className="w-64 h-64 object-contain rounded-xl shadow-md border-4 border-white"
-                            />
-                            <p className="text-xs text-muted-foreground font-medium animate-pulse">
-                                QR code refreshes automatically
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
-                            <p className="text-sm text-muted-foreground font-medium">Generating QR...</p>
-                        </div>
-                    )}
-                </div>
-
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
