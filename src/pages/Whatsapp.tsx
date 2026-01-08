@@ -32,9 +32,9 @@ export default function Whatsapp() {
                     const qrRes = await fetch(`${API_BASE}/api/qr`);
                     const qrData = await qrRes.json();
 
-                    if (qrData.status === "qr") {
+                    if (qrData.success && qrData.qr) {
                         setQr(qrData.qr);
-                    } else if (qrData.status === "connected") {
+                    } else if (qrData.success && qrData.message === "Already connected") {
                         setConnected(true);
                     }
                     setLoading(false);
