@@ -18,13 +18,21 @@ export default function Whatsapp() {
     };
 
     useEffect(() => {
-        const interval = setInterval(async () => {
-            const res = await fetch(`${API_BASE}/api/qr/harshil`);
-            const data = await res.json();
-            setStatus(data.status);
-            if (data.qr) setQr(data.qr);
-        }, 3000);
+        const fetchQR = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/qr/harshil`);
+                if (!res.ok) throw new Error(`Server Error: ${res.status}`);
 
+                const data = await res.json();
+                setStatus(data.status); // waiting, connected, or qr
+                if (data.qr) setQr(data.qr);
+            } catch (error) {
+                console.error("Poll Error:", error);
+                setStatus("Error: Server Offline or Unreachable");
+            }
+        };
+
+        const interval = setInterval(fetchQR, 3000);
         return () => clearInterval(interval);
     }, []);
 
