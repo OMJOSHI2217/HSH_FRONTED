@@ -97,11 +97,11 @@ const AddStudent = () => {
         });
       }
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
-        title: 'Error',
-        description: 'Failed to save student. Check console/network.',
+        title: 'Error Saving Student',
+        description: error.message || error.error_description || 'Unknown error occurred. Check connection.',
         variant: 'destructive',
       });
     }

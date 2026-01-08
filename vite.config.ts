@@ -8,15 +8,16 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+  },
+  preview: {
+    host: "::",
+    port: 4173,
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       }
-    },
-    watch: {
-      ignored: ['**/.wwebjs_auth/**', '**/.wwebjs_cache/**']
     }
   },
   plugins: [
@@ -24,6 +25,14 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      devOptions: {
+        enabled: true
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+      },
       manifest: {
         name: 'Hostel Hub Admin',
         short_name: 'Hostel Hub',
