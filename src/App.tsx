@@ -32,7 +32,11 @@ export default function App() {
     await fetch(`${API_BASE}/api/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: "harshil", number, message })
+      body: JSON.stringify({
+        userId: "harshil",
+        number: "91XXXXXXXXXX",
+        message: "Hello from my PWA 🚀"
+      })
     });
     alert("Message sent!");
   };
