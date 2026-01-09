@@ -1,4 +1,4 @@
-import { LogOut, Menu, UserPlus, RefreshCw, CheckSquare, FolderOpen, LayoutDashboard, Users, Cake } from 'lucide-react';
+import { LogOut, Menu, UserPlus, RefreshCw, CheckSquare, FolderOpen, LayoutDashboard, Users, Cake, MessageCircle, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -26,6 +26,8 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
     { path: '/update', label: 'Update', icon: RefreshCw },
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },
     { path: '/categories', label: 'Categories', icon: FolderOpen },
+    { path: '/education', label: 'Education', icon: BookOpen },
+    { path: '/whatsapp', label: 'WhatsApp', icon: MessageCircle },
   ];
 
   const filteredMenuItems = menuItems.filter(item => item.path !== location.pathname);

@@ -93,8 +93,8 @@ const Birthdays = () => {
                                                 const message = `Happy Birthday, ${student.name}! 🎉🎂 Wishing you a fantastic day filled with joy and happiness!`;
                                                 toast.info(`Sending wish to ${student.name}...`);
 
-                                                await api.post('/api/whatsapp/send', {
-                                                    to: student.mobile,
+                                                await api.post('/api/send', {
+                                                    number: student.mobile,
                                                     message: message
                                                 });
                                                 toast.success(`Birthday wish sent to ${student.name}!`);

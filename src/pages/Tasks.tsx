@@ -1,27 +1,59 @@
-import { useState } from 'react';
-import { Plus, CheckCircle2, CircleDashed, ClipboardList } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, CheckCircle2, CircleDashed, ClipboardList, Search } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { TaskItem } from '@/components/TaskItem';
 import { Button } from '@/components/ui/button';
 import { Task } from '@/types';
 import { Input } from '@/components/ui/input';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
-import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTaskNotifications } from '@/hooks/useTaskNotifications';
+import { getTasks, addTask, updateTask } from '@/lib/store';
+import { toast } from 'sonner';
+
 const Tasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const toggleTask = (taskId: string) => {
+  // Fetch Tasks from DB
+  useEffect(() => {
+    const fetchTasks = async () => {
+      setLoading(true);
+      const data = await getTasks();
+      setTasks(data);
+      setLoading(false);
+    };
+    fetchTasks();
+  }, []);
+
+  // Notifications for Deadlines
+  useTaskNotifications(tasks);
+
+  const toggleTask = async (taskId: string) => {
+    // Optimistic UI Update
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newStatus = task.status === 'pending' ? 'done' : 'pending';
+
+    // Update Local State
     setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId
-          ? { ...task, status: task.status === 'pending' ? 'done' : 'pending' }
-          : task
-      )
+      prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t)
     );
+
+    // Update DB
+    try {
+      await updateTask(taskId, { status: newStatus });
+    } catch (e) {
+      // Revert on error
+      setTasks(prev =>
+        prev.map(t => t.id === taskId ? { ...t, status: task.status } : t)
+      );
+      toast.error("Failed to update task status");
+    }
   };
 
   const filteredTasks = tasks.filter(task => {
@@ -30,8 +62,20 @@ const Tasks = () => {
     return matchesFilter && matchesSearch;
   });
 
-  const handleCreateTask = (newTask: Task) => {
-    setTasks(prev => [newTask, ...prev]);
+  const handleCreateTask = async (newTask: Task) => {
+    // Ensure we don't block UI too much, but ideally we wait for DB ID if we were rigorous.
+    // However, the ID generation in CreateTaskDialog currently uses Date.now(), 
+    // we should let Supabase handle IDs or stick with UUIDs.
+    // For now, let's assume `addTask` returns the DB object with real ID.
+
+    try {
+      const savedTask = await addTask(newTask);
+      if (savedTask) {
+        setTasks(prev => [savedTask, ...prev]);
+      }
+    } catch (e) {
+      toast.error("Failed to save task to database");
+    }
   };
 
   const pendingCount = tasks.filter(t => t.status === 'pending').length;
@@ -104,7 +148,9 @@ const Tasks = () => {
 
         {/* Task List */}
         <div className="space-y-4 mb-20">
-          {filteredTasks.length > 0 ? (
+          {loading ? (
+            <div className="py-20 text-center text-muted-foreground">Loading tasks...</div>
+          ) : filteredTasks.length > 0 ? (
             filteredTasks.map((task, index) => (
               <div
                 key={task.id}
@@ -144,7 +190,7 @@ const Tasks = () => {
           onTaskCreate={handleCreateTask}
         />
       </main>
-    </div >
+    </div>
   );
 };
 

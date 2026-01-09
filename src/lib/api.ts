@@ -1,13 +1,13 @@
 import axios from 'axios';
 
-// Create a centralized axios instance
-// This allows us to configure the base URL dynamically based on environment variables
+// 1. Define the Backend URL (Dynamic)
+// - If VITE_API_URL is set in .env, use it.
+// - If PROD (Vercel), use configured URL.
+// - If DEV (Localhost), use Local Backend.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+
 const api = axios.create({
-    // Use the environment variable if set.
-    // Otherwise:
-    // - In Development: Use '' to allow Vite proxy to handle /api requests to localhost:3000
-    // - In Production: Use the hardcoded Render URL as a fallback, BUT check if we are in a preview/local environment first via relative path
-    baseURL: import.meta.env.VITE_API_URL || '',
+    baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Tags, Plus, Users, Search, CheckCircle2, X, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
+import { Tags, Plus, Users, Search, CheckCircle2, X, Trash2, ChevronRight, ChevronDown, Loader2 } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,23 +18,13 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { getStudents } from '@/lib/store';
+import { getStudents, getCategories, addCategory, deleteCategory, updateCategory, Karyakarta } from '@/lib/store';
 import { Student } from '@/types';
 import { toast } from 'sonner';
 
-interface Karyakarta {
-  id: string;
-  name: string;
-  studentIds: string[];
-  type: 'main' | 'sub';
-  parentId?: string; // Only for sub-karyakartas
-}
-
 const Categories = () => {
-  const [karyakartas, setKaryakartas] = useState<Karyakarta[]>(() => {
-    const saved = localStorage.getItem('karyakartas');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [karyakartas, setKaryakartas] = useState<Karyakarta[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [newKaryakartaName, setNewKaryakartaName] = useState('');
   const [newKaryakartaType, setNewKaryakartaType] = useState<'main' | 'sub'>('main');
@@ -44,21 +34,22 @@ const Categories = () => {
   const [selectedKaryakartaId, setSelectedKaryakartaId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch students on mount
+  // Fetch Data on mount
   useEffect(() => {
-    const fetchStudents = async () => {
-      const data = await getStudents();
-      setStudents(data);
+    const init = async () => {
+      setLoading(true);
+      const [studentsData, categoriesData] = await Promise.all([
+        getStudents(),
+        getCategories()
+      ]);
+      setStudents(studentsData);
+      setKaryakartas(categoriesData);
+      setLoading(false);
     };
-    fetchStudents();
+    init();
   }, []);
 
-  // Save to localStorage whenever karyakartas change
-  useEffect(() => {
-    localStorage.setItem('karyakartas', JSON.stringify(karyakartas));
-  }, [karyakartas]);
-
-  const handleAddKaryakarta = () => {
+  const handleAddKaryakarta = async () => {
     if (!newKaryakartaName.trim()) return;
 
     if (newKaryakartaType === 'sub' && !selectedParentId) {
@@ -67,25 +58,44 @@ const Categories = () => {
     }
 
     const newKaryakarta: Karyakarta = {
-      id: crypto.randomUUID(),
+      id: crypto.randomUUID(), // Temporarily generate ID, but DB will likely ignore or overwrite if using serial, but UUID is fine if DB expects text id.
+      // Usually supbase auto-generates ID. Let's see if we can omit ID.
+      // The store.ts `addCategory` takes `Karyakarta` which has `id`. 
+      // Ideally we shouldn't pass ID if it's auto-generated.
+      // Let's assume for now we generate it or the types need adjustment.
+      // `addCategory` implementation: `insert([dbPayload])`.
+
       name: newKaryakartaName.trim(),
       studentIds: [],
       type: newKaryakartaType,
       parentId: newKaryakartaType === 'sub' ? selectedParentId : undefined
     };
 
-    setKaryakartas([...karyakartas, newKaryakarta]);
-    setNewKaryakartaName('');
-    // Reset to main for next add
-    setNewKaryakartaType('main');
-    setSelectedParentId('');
-    toast.success(`${newKaryakartaType === 'main' ? 'Main' : 'Sub'} Karyakarta added`);
+    try {
+      // If DB generates ID, we should let it. But `Karyakarta` interface requires ID.
+      // Let's check `addCategory` implementation in store.ts. It calls `toDbCategory`.
+      // `toDbCategory` doesn't remove ID. So we can pass a UUID or let DB handle it.
+      // If DB is UUID primary key, we can generate it here or let DB do it.
+      // Let's assume we can generate client side or just omit and cast.
+
+      // Actually, let's just generate a UUID here to be safe and update UI optimistically or wait.
+      // Wait for DB response is better.
+
+      const saved = await addCategory(newKaryakarta);
+      if (saved) {
+        setKaryakartas([...karyakartas, saved]);
+        setNewKaryakartaName('');
+        setNewKaryakartaType('main');
+        setSelectedParentId('');
+        toast.success(`${newKaryakartaType === 'main' ? 'Main' : 'Sub'} Karyakarta added`);
+      }
+    } catch (e) {
+      toast.error("Failed to add category");
+    }
   };
 
-  const handleDeleteKaryakarta = (id: string, e: React.MouseEvent) => {
+  const handleDeleteKaryakarta = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    // detailed check: if main, also delete subs? Or warn?
-    // specific requirement not given, but basic logic: delete simple.
 
     // Check if it has subs
     const hasSubs = karyakartas.some(k => k.parentId === id);
@@ -93,21 +103,38 @@ const Categories = () => {
       if (!confirm('This Karyakarta has Sub-Karyakartas. Deleting it will also delete them. Continue?')) return;
     }
 
-    setKaryakartas(prev => prev.filter(k => k.id !== id && k.parentId !== id));
-    toast.success('Karyakarta deleted');
+    try {
+      await deleteCategory(id);
+      setKaryakartas(prev => prev.filter(k => k.id !== id && k.parentId !== id));
+      toast.success('Karyakarta deleted');
+    } catch (e) {
+      toast.error("Failed to delete category");
+    }
   };
 
-  const toggleStudentAssignment = (karyakartaId: string, studentId: string) => {
-    setKaryakartas(prev => prev.map(k => {
-      if (k.id !== karyakartaId) return k;
-      const isAssigned = k.studentIds.includes(studentId);
-      return {
-        ...k,
-        studentIds: isAssigned
-          ? k.studentIds.filter(id => id !== studentId)
-          : [...k.studentIds, studentId]
-      };
-    }));
+  const toggleStudentAssignment = async (karyakartaId: string, studentId: string) => {
+    const karyakarta = karyakartas.find(k => k.id === karyakartaId);
+    if (!karyakarta) return;
+
+    const isAssigned = karyakarta.studentIds.includes(studentId);
+    const newStudentIds = isAssigned
+      ? karyakarta.studentIds.filter(id => id !== studentId)
+      : [...karyakarta.studentIds, studentId];
+
+    // Optimistic Update
+    setKaryakartas(prev => prev.map(k =>
+      k.id === karyakartaId ? { ...k, studentIds: newStudentIds } : k
+    ));
+
+    try {
+      await updateCategory(karyakartaId, { studentIds: newStudentIds });
+    } catch (e) {
+      // Revert
+      setKaryakartas(prev => prev.map(k =>
+        k.id === karyakartaId ? { ...k, studentIds: karyakarta.studentIds } : k
+      ));
+      toast.error("Failed to update assignment");
+    }
   };
 
   const selectedKaryakarta = karyakartas.find(k => k.id === selectedKaryakartaId);
@@ -186,83 +213,92 @@ const Categories = () => {
 
         {/* Hierarchical List */}
         <div className="space-y-6">
-          {mainKaryakartas.map((main) => {
-            const subKaryakartas = karyakartas.filter(k => k.parentId === main.id);
-
-            return (
-              <div key={main.id} className="bg-white border border-border/50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                {/* Main Karyakarta Header */}
-                <div className="p-6 bg-gray-50/50 flex items-center justify-between group cursor-pointer" onClick={() => setSelectedKaryakartaId(main.id)}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-bold text-xl">
-                      {main.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground">{main.name}</h3>
-                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <Users className="w-3.5 h-3.5" />
-                        {main.studentIds.length} Direct Students
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => handleDeleteKaryakarta(main.id, e)}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </Button>
-                </div>
-
-                {/* Sub Karyakartas List */}
-                {subKaryakartas.length > 0 && (
-                  <div className="border-t border-border/50">
-                    <div className="px-6 py-3 bg-gray-50 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                      Sub Groups
-                    </div>
-                    <div className="divide-y divide-border/50">
-                      {subKaryakartas.map(sub => (
-                        <div
-                          key={sub.id}
-                          className="p-4 pl-12 hover:bg-gray-50 cursor-pointer flex items-center justify-between group/sub transition-colors"
-                          onClick={() => setSelectedKaryakartaId(sub.id)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-primary/40" />
-                            <span className="font-semibold text-foreground">{sub.name}</span>
-                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 ml-2">
-                              {sub.studentIds.length} Students
-                            </Badge>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover/sub:opacity-100 transition-opacity"
-                            onClick={(e) => handleDeleteKaryakarta(sub.id, e)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {subKaryakartas.length === 0 && (
-                  <div className="px-6 py-4 text-sm text-muted-foreground italic border-t border-border/50 pl-20">
-                    No sub-groups added.
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {mainKaryakartas.length === 0 && (
-            <div className="py-20 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl">
-              <p>No Karyakarta hierarchies created yet.</p>
+          {loading ? (
+            <div className="py-20 text-center text-muted-foreground flex flex-col items-center">
+              <Loader2 className="w-10 h-10 animate-spin mb-2" />
+              <p>Loading Karyakartas...</p>
             </div>
+          ) : (
+            <>
+              {mainKaryakartas.map((main) => {
+                const subKaryakartas = karyakartas.filter(k => k.parentId === main.id);
+
+                return (
+                  <div key={main.id} className="bg-white border border-border/50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    {/* Main Karyakarta Header */}
+                    <div className="p-6 bg-gray-50/50 flex items-center justify-between group cursor-pointer" onClick={() => setSelectedKaryakartaId(main.id)}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-bold text-xl">
+                          {main.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-foreground">{main.name}</h3>
+                          <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5" />
+                            {main.studentIds.length} Direct Students
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => handleDeleteKaryakarta(main.id, e)}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                    </div>
+
+                    {/* Sub Karyakartas List */}
+                    {subKaryakartas.length > 0 && (
+                      <div className="border-t border-border/50">
+                        <div className="px-6 py-3 bg-gray-50 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                          Sub Groups
+                        </div>
+                        <div className="divide-y divide-border/50">
+                          {subKaryakartas.map(sub => (
+                            <div
+                              key={sub.id}
+                              className="p-4 pl-12 hover:bg-gray-50 cursor-pointer flex items-center justify-between group/sub transition-colors"
+                              onClick={() => setSelectedKaryakartaId(sub.id)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-primary/40" />
+                                <span className="font-semibold text-foreground">{sub.name}</span>
+                                <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 ml-2">
+                                  {sub.studentIds.length} Students
+                                </Badge>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover/sub:opacity-100 transition-opacity"
+                                onClick={(e) => handleDeleteKaryakarta(sub.id, e)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {subKaryakartas.length === 0 && (
+                      <div className="px-6 py-4 text-sm text-muted-foreground italic border-t border-border/50 pl-20">
+                        No sub-groups added.
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {mainKaryakartas.length === 0 && (
+                <div className="py-20 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl">
+                  <p>No Karyakarta hierarchies created yet.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -349,3 +385,4 @@ const Categories = () => {
 };
 
 export default Categories;
+

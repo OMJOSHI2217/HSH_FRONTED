@@ -76,8 +76,9 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
 
             try {
                 // Try sending via backend bot first
-                await api.post('/api/whatsapp/send', {
-                    to: selectedStudent.mobile,
+                // Try sending via backend bot first
+                await api.post('/api/send', {
+                    number: selectedStudent.mobile,
                     message: message
                 });
                 toast.success("Notification sent via WhatsApp Bot");
