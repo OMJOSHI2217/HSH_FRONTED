@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Users2, RefreshCw } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { StudentListItem } from '@/components/StudentListItem';
+import { StudentProfileSheet } from '@/components/StudentProfileSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,6 +28,8 @@ const Students = () => {
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     fetchStudents();
@@ -36,14 +39,10 @@ const Students = () => {
     try {
       setLoading(true);
       const data = await getStudents();
-      setStudents(data);
+      setStudents(data || []);
     } catch (error) {
       console.error('Failed to fetch students', error);
-      toast({
-        title: "Error",
-        description: "Failed to load students. Check connection.",
-        variant: "destructive"
-      });
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -62,7 +61,7 @@ const Students = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
-      <AppHeader title="Hostel Hub" />
+      <AppHeader title="Hari-Saurabh Hostel" />
 
       <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
         {/* Header Section */}
@@ -133,7 +132,10 @@ const Students = () => {
                 >
                   <StudentListItem
                     student={student}
-                    onClick={() => navigate(`/students/${student.id}`)}
+                    onClick={() => {
+                      setSelectedStudent(student);
+                      setIsProfileOpen(true);
+                    }}
                   />
                 </div>
               ))
@@ -158,6 +160,12 @@ const Students = () => {
           <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
         </Button>
       </main>
+
+      <StudentProfileSheet
+        student={selectedStudent}
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
     </div>
   );
 };

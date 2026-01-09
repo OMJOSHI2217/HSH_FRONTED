@@ -73,7 +73,7 @@ const Update = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
-      <AppHeader title="Hostel Hub" />
+      <AppHeader title="Hari-Saurabh Hostel" />
 
       <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
         {/* Header Section */}

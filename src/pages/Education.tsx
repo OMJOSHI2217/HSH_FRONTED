@@ -47,9 +47,10 @@ export default function Education() {
                 getStudents(),
                 getCategories()
             ]);
-            setResources(resData);
-            setStudents(studData);
-            setKaryakartas(catData);
+
+            setResources(resData || []);
+            setStudents(studData || []);
+            setKaryakartas(catData || []);
         } catch (error) {
             toast.error("Failed to load data");
         } finally {

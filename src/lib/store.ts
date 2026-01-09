@@ -39,6 +39,7 @@ const fromDbStudent = (db: any): Student => ({
     interest: db.interest,
     isAlumni: db.is_alumni,
     createdAt: db.created_at,
+    image: db.image,
 });
 
 const toDbStudent = (student: Partial<Student>) => {
@@ -46,6 +47,7 @@ const toDbStudent = (student: Partial<Student>) => {
     if (student.roomNo !== undefined) db.room_no = student.roomNo;
     if (student.isAlumni !== undefined) db.is_alumni = student.isAlumni;
     if (student.createdAt !== undefined) db.created_at = student.createdAt;
+    if (student.image !== undefined) db.image = student.image;
 
     delete db.roomNo;
     delete db.isAlumni;

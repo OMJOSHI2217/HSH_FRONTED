@@ -14,8 +14,12 @@ const Birthdays = () => {
 
     useEffect(() => {
         const fetchStudents = async () => {
-            const data = await getStudents();
-            setStudents(data);
+            try {
+                const data = await getStudents();
+                setStudents(data || []);
+            } catch (error) {
+                setStudents([]);
+            }
         };
         fetchStudents();
     }, []);
@@ -35,7 +39,7 @@ const Birthdays = () => {
 
     return (
         <div className="min-h-screen pb-20 relative animate-fade-in">
-            <AppHeader title="Hostel Hub" />
+            <AppHeader title="Hari-Saurabh Hostel" />
 
             <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
                 {/* Header Section */}

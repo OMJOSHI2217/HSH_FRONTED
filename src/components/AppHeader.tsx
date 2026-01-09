@@ -34,8 +34,8 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
 
   return (
     <header className="sticky top-0 z-40 glass-header shadow-soft">
-      <div className="flex items-center justify-between h-16 px-4 max-w-7xl mx-auto">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between h-16 px-4 max-w-7xl mx-auto relative">
+        <div className="flex items-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -62,16 +62,22 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
               })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Logo" className="h-10 w-auto object-contain" />
-            <h1 className="text-xl font-bold tracking-tight text-foreground">{title}</h1>
-          </div>
+        </div>
+
+        {/* Centered Logo */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="h-14 sm:h-16 w-auto object-contain cursor-pointer transition-transform hover:scale-110 active:scale-90"
+            onClick={() => navigate('/dashboard')}
+          />
         </div>
 
         <Button
           variant="ghost"
           size="icon"
-          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all rounded-xl"
+          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all rounded-xl z-10"
           onClick={logout}
           title="Logout"
         >

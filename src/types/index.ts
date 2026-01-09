@@ -12,7 +12,7 @@ export interface Student {
   interest: string;
   isAlumni: boolean;
   createdAt: string;
-
+  image?: string;
 }
 
 export interface Task {
@@ -47,4 +47,13 @@ export interface Activity {
   type: 'student_added' | 'student_updated' | 'task_created' | 'room_updated';
   description: string;
   timestamp: string;
+}
+
+export interface EducationResource {
+  id: string;
+  title: string;
+  type: 'video' | 'link';
+  url: string;
+  description?: string;
+  created_at?: string;
 }

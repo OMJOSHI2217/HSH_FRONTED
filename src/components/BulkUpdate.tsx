@@ -147,13 +147,13 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="space-y-6">
-                <div className="flex items-start gap-5">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
                     <div className="w-16 h-16 gradient-success rounded-2xl flex items-center justify-center shrink-0 shadow-soft">
                         <FileSpreadsheet className="w-10 h-10 text-white" />
                     </div>
                     <div className="space-y-1">
-                        <h3 className="font-extrabold text-2xl text-foreground tracking-tight">Excel Integration</h3>
-                        <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                        <h3 className="font-extrabold text-xl sm:text-2xl text-foreground tracking-tight">Excel Integration</h3>
+                        <p className="text-muted-foreground font-medium text-xs sm:text-sm leading-relaxed">
                             Manage your entire database efficiently using standard Excel templates. Download, edit, and re-upload with ease.
                         </p>
                     </div>
